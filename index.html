@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html ng-app="myApp" ng-controller="myCtrl">
+<html>
 	<head>
 		<title>Simple Map</title>
 		<meta name="viewport" content="initial-scale=1.0">
@@ -18,19 +18,17 @@
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
-		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.3/angular.min.js"></script>
 	</head>
 	<body>
-		
 		<div class="form-group">
 			<label for="addr1">Enter Address 1:</label>
-			<input type="text" class="form-control" id="addr1" ng-model="addr1model">
+			<input type="text" class="form-control" id="addr1">
 		</div>
 		<div class="form-group">
 			<label for="addr2">Enter Address 2:</label>
-			<input type="text" class="form-control" id="addr2" ng-model="addr2model">
+			<input type="text" class="form-control" id="addr2">
 		</div>
-		<button type="button" class="btn btn-primary" ng-click="find(addr1model,addr2model)">Submit</button><br><br>
+		<button type="button" class="btn btn-primary" onclick="find(show)">Submit</button><br><br>
 		<div id="map" class="col-sm-6"></div>
 		<div id="agency" class="col-sm-6">
 			hello<br>
@@ -40,6 +38,10 @@
 
 			var map;
 			var austinLocation = {lat: 37.5, lng: -122.1};
+			var loc1;
+			var loc2;
+			var markers = [];//store all the markers
+			var places = [];
 			function initMap() {
 				map = new google.maps.Map(document.getElementById('map'), {
 					center: austinLocation,
@@ -62,6 +64,7 @@
 				  	google.maps.event.addListener(autocomplete, 'place_changed', function() {
 				    infowindow.close();
 				    var place = autocomplete.getPlace();
+				    addr=="addr1" ? loc1 = place : loc2 = place;
 				    if (!place.geometry) {
 				      return;
 				    }
@@ -89,14 +92,12 @@
 				bind("addr1");
 				bind("addr2");
 			}
-			var app = angular.module('myApp', []);
-			app.controller('myCtrl', function($scope){
-				$scope.find = function(s1, s2) {
-					console.log(s1);
-					console.log(s2);
+			function find(show) {
+				function getAgency(loc){
+					console.log("sss");
 					var service = new google.maps.places.PlacesService(map);
 	 				service.nearbySearch({
-	 					location: {lat: 37.5, lng: -122.1},
+	 					location: loc.geometry.location,
 	 					radius: 16093.4,
 	 					type: ['real_estate_agency']
 	 				}, callback);
@@ -104,11 +105,13 @@
 		        if (status === google.maps.places.PlacesServiceStatus.OK) {
 		          for (var i = 0; i < results.length; i++) {
 		            createMarker(results[i]);
+		            console.log("places.length");
+		            places.push(results[i]);
 		          }
 		        }
 		        else console.log(status);
 		      }
-
+		      console.log("sss");
 		      function createMarker(place) {
 		      	infowindow = new google.maps.InfoWindow();
 		        var placeLoc = place.geometry.location;
@@ -116,15 +119,33 @@
 		          map: map,
 		          position: place.geometry.location
 		        });
-
+		        markers.push(marker);//store all markers
 		        google.maps.event.addListener(marker, 'click', function() {
 		          infowindow.setContent(place.name +" "+ place.rating);
 		          infowindow.open(map, this);
 		        });
-		      }
+		      }     
 				}
-			});
-			
+				function deleteAllMarkers(){
+	      	for(var i = 0; i < markers.length; i++) markers[i].setMap(null);
+	      	markers = [];
+	      }
+	      deleteAllMarkers();//before inserting new markers, delete old markers first.
+				places = [];
+				if(loc1 !== undefined) getAgency(loc1);
+				if(loc2 !== undefined) getAgency(loc2);
+				// for(var i=1; i<1000; i++)console.log("hello!");
+				// console.log(places.length);
+				// for(var i=0; i<places.length; i++) console.log(places[i].rating);
+				// places.sort(function(a, b){
+				// 	return a.rating - b.rating;
+				// });
+				// console.log(places);
+				setTimeout(show, 1000);
+			}
+			function show(){
+				console.log(places);
+			}
 
 			
 
