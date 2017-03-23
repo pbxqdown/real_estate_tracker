@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html ng-app="myApp" ng-controller="myCtrl">
+	<head>
+		<title>Simple Map</title>
+		<meta name="viewport" content="initial-scale=1.0">
+		<meta charset="utf-8">
+		<style>
+			html, body {
+				height: 100%;
+				margin: 0;
+				padding: 0;
+			}
+			#map {
+				height: 100%;
+				width: 50%;
+			}
+		</style>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.3/angular.min.js"></script>
+	</head>
+	<body>
+		
+		<div class="form-group">
+			<label for="addr1">Enter Address 1:</label>
+			<input type="text" class="form-control" id="addr1" ng-model="addr1model">
+		</div>
+		<div class="form-group">
+			<label for="addr2">Enter Address 2:</label>
+			<input type="text" class="form-control" id="addr2" ng-model="addr2model">
+		</div>
+		<button type="button" class="btn btn-primary" ng-click="find(addr1model,addr2model)">Submit</button><br><br>
+		<div id="map" class="col-sm-6"></div>
+		<div id="agency" class="col-sm-6">
+			hello<br>
+			hello2
+		</div>
+		<script>
+
+			var map;
+			var austinLocation = {lat: 37.5, lng: -122.1};
+			function initMap() {
+				map = new google.maps.Map(document.getElementById('map'), {
+					center: austinLocation,
+					zoom: 10
+				});
+				//bind function is used to bind autocomplete to input field
+				function bind(addr) {
+					var input = document.getElementById(addr);
+					var autocomplete = new google.maps.places.Autocomplete(input);
+			  	autocomplete.bindTo('bounds', map);
+			  	var infowindow = new google.maps.InfoWindow();
+				  var image = 'https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png';
+				  var marker = new google.maps.Marker({
+				    map: map,
+				    icon: image
+				  });
+				  google.maps.event.addListener(marker, 'click', function() {
+				    infowindow.open(map, marker);
+				  	});
+				  	google.maps.event.addListener(autocomplete, 'place_changed', function() {
+				    infowindow.close();
+				    var place = autocomplete.getPlace();
+				    if (!place.geometry) {
+				      return;
+				    }
+
+				    // if (place.geometry.viewport) {
+				    //   map.fitBounds(place.geometry.viewport);
+				    // } else {
+				    //   map.setCenter(place.geometry.location);
+				    //   //map.setZoom(10);
+				    // }
+
+				    // Set the position of the marker using the place ID and location.
+				    marker.setPlace(/** @type {!google.maps.Place} */ ({
+				      placeId: place.place_id,
+				      location: place.geometry.location
+				    }));
+				    marker.setVisible(true);
+
+				    infowindow.setContent('<div><strong>' + place.name + '</strong><br>' +
+				        'Place ID: ' + place.place_id + '<br>' +
+				        place.formatted_address + '</div>');
+				    infowindow.open(map, marker);
+				  });
+				}
+				bind("addr1");
+				bind("addr2");
+			}
+			var app = angular.module('myApp', []);
+			app.controller('myCtrl', function($scope){
+				$scope.find = function(s1, s2) {
+					console.log(s1);
+					console.log(s2);
+					var service = new google.maps.places.PlacesService(map);
+	 				service.nearbySearch({
+	 					location: {lat: 37.5, lng: -122.1},
+	 					radius: 16093.4,
+	 					type: ['real_estate_agency']
+	 				}, callback);
+	 				function callback(results, status) {
+		        if (status === google.maps.places.PlacesServiceStatus.OK) {
+		          for (var i = 0; i < results.length; i++) {
+		            createMarker(results[i]);
+		          }
+		        }
+		        else console.log(status);
+		      }
+
+		      function createMarker(place) {
+		      	infowindow = new google.maps.InfoWindow();
+		        var placeLoc = place.geometry.location;
+		        var marker = new google.maps.Marker({
+		          map: map,
+		          position: place.geometry.location
+		        });
+
+		        google.maps.event.addListener(marker, 'click', function() {
+		          infowindow.setContent(place.name +" "+ place.rating);
+		          infowindow.open(map, this);
+		        });
+		      }
+				}
+			});
+			
+
+			
+
+		</script>
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBivhsoVyQqRYK9ThuqELXlLntNHmREoBI&callback=initMap&libraries=places"
+				async defer></script>
+	</body>
+</html>
