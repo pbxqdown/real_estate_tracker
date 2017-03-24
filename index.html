@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 	<head>
-		<title>Simple Map</title>
+		<title>Real Estate Tracker</title>
 		<meta name="viewport" content="initial-scale=1.0">
 		<meta charset="utf-8">
 		<style>
@@ -22,9 +22,10 @@
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBivhsoVyQqRYK9ThuqELXlLntNHmREoBI&callback=initMap&libraries=places,geometry"
+				async defer></script>
 	</head>
 	<body>
-		<header>
 		<div class="form-group">
 			<label for="addr1">Enter Address 1:</label>
 			<input type="text" class="form-control" id="addr1">
@@ -36,7 +37,6 @@
 		<button type="button" class="btn btn-primary" onclick="find(show)">Submit</button>
 		<button type="button" class="btn btn-danger" onclick="clearAll()">Clear All</button>
 		<br><br>
-		</header>
 		<div id="map" class="col-sm-6"></div>
 		<div id="agency" class="col-sm-6">
 			<ul class="list-group" id="agency-list">
@@ -44,20 +44,22 @@
 			<div class="btn-group" id="prenext"></div>
 		</div>
 		<script>
-
 			var map;
-			var austinLocation = {lat: 37.5, lng: -122.1};
+			var austinLocation = {lat: 30.27, lng: -97.74};
+			//var austinLocation = {lat: 37.5, lng: -122.1};
 			var loc1;//store location of flags
 			var loc2;
 			var flags = [null, null];//store flag
 			var windows = [null, null];//store infowindow
 			var markers = [];//store all the markers
+			var placeToMarker = {}; //use place id to find marker
 			var places = [];
 			var page_index = 0;
+			var LISTNUM = 10;
 			function initMap() {
 				map = new google.maps.Map(document.getElementById('map'), {
 					center: austinLocation,
-					zoom: 10
+					zoom: 11
 				});
 				//bind function is used to bind autocomplete to input field
 				function bind(addr) {
@@ -83,13 +85,6 @@
 				      return;
 				    }
 
-				    // if (place.geometry.viewport) {
-				    //   map.fitBounds(place.geometry.viewport);
-				    // } else {
-				    //   map.setCenter(place.geometry.location);
-				    //   //map.setZoom(10);
-				    // }
-
 				    // Set the position of the marker using the place ID and location.
 				    marker.setPlace(/** @type {!google.maps.Place} */ ({
 				      placeId: place.place_id,
@@ -106,21 +101,19 @@
 				bind("addr2");
 			}
 			
-			function find(show) {
+			function find(show) {//find all agencies and mark them
 				function getAgency(loc){
 					if(loc === undefined) return;
-					console.log("sss");
 					var service = new google.maps.places.PlacesService(map);
 	 				service.nearbySearch({
 	 					location: loc.geometry.location,
 	 					radius: 16093.4,
 	 					type: ['real_estate_agency']
-	 					//type: ['restaurant']
 	 				}, callback);
 	 				function callback(results, status) {
 		        if (status === google.maps.places.PlacesServiceStatus.OK) {
 		          for (var i = 0; i < results.length; i++) {
-		            createMarker(results[i]);
+		            placeToMarker[results[i].place_id] = createMarker(results[i]);
 		            places.push(results[i]);
 		          }
 		        }
@@ -133,11 +126,12 @@
 		          map: map,
 		          position: place.geometry.location
 		        });
-		        markers.push(marker);//store all markers
+		        markers.push(marker);
 		        google.maps.event.addListener(marker, 'click', function() {
-		          infowindow.setContent(place.name +" "+ place.rating);
+		          infowindow.setContent('<strong>'+place.name+'</strong>'+" <br>Rating: "+ place.rating+" <br>Location: "+place.vicinity);
 		          infowindow.open(map, this);
 		        });
+		        return marker;
 		      }     
 				}
 	      deleteAllMarkers();//before inserting new markers, delete old markers first.
@@ -145,16 +139,9 @@
 				places = [];
 				getAgency(loc1);
 				getAgency(loc2);
-				// for(var i=1; i<1000; i++)console.log("hello!");
-				// console.log(places.length);
-				// for(var i=0; i<places.length; i++) console.log(places[i].rating);
-				// places.sort(function(a, b){
-				// 	return a.rating - b.rating;
-				// });
-				// console.log(places);
 				setTimeout(show, 1000);
 			}
-			function show(){
+			function show(){//use show callback to display the result on the right side of the webpage
 				clearContent();
 				places.sort(function(a, b){
 					function calculateDistance(loc, flag) {
@@ -164,8 +151,16 @@
 					return calculateDistance(a, loc1) + calculateDistance(a, loc2)
 									- calculateDistance(b, loc1) - calculateDistance(b, loc2);
 				});
-				setTimeout(console.log(places), 2000);
-				if(places.length/10 > 1) $("#prenext").append(`
+				function unique(places) {//remove duplicate in places array
+					if(places == undefined) return places;
+					var result = [places[0]];
+					for(var i = 1; i<places.length; i++) {
+						if(places[i-1].place_id != places[i].place_id) result.push(places[i]);
+					}
+					return result;
+				}
+				places = unique(places);
+				if(places.length/LISTNUM > 1) $("#prenext").append(`
 					<div id="page_index"></div>
 					<button class="btn btn-success" onclick="prev()">Previous</button>
 					<button class="btn btn-success" onclick="next()">Next</button>
@@ -178,20 +173,33 @@
 				showPage();
 			}
 			function next(){
-				if((page_index+1)*10 >= places.length) return;
+				if((page_index+1)*LISTNUM >= places.length) return;
 				page_index++;
 				showPage();
 			}
 			function showPage(){
 				document.getElementById("agency-list").innerHTML = "";
-				for(var i = 10*page_index; i < Math.min(places.length, 10*(page_index+1)); i++){
-					document.getElementById("agency-list").innerHTML += "<li class='list-group-item'>" + places[i].name+"</li>";
+				for(var i = LISTNUM*page_index; i < Math.min(places.length, LISTNUM*(page_index+1)); i++){
+					document.getElementById("agency-list").innerHTML += "<li class='list-group-item' onmouseover='showMarker("+i+")' onmouseout='recover("+i+")'>" + places[i].name+"</li>";
 				}
-				document.getElementById("page_index").innerHTML = "Page "+(page_index+1);
+				if(document.getElementById("page_index") != undefined) document.getElementById("page_index").innerHTML = "Page "+(page_index+1);
+			}
+			function showMarker(i) {
+				var marker = placeToMarker[places[i].place_id];
+				console.log(places[i].place_id);
+				marker.setIcon("http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|" + "000066");
+				marker.setZIndex(google.maps.Marker.MAX_ZINDEX);
+			}
+			function recover(i) {
+				var marker = placeToMarker[places[i].place_id];
+				console.log(places[i].place_id);
+				marker.setIcon();
+				marker.setZIndex();
 			}
 			function deleteAllMarkers(){
       	for(var i = 0; i < markers.length; i++) markers[i].setMap(null);
       	markers = [];
+      	placeToMarker = {};
       }
       function deleteAllLocs(){
       	loc1 = undefined;
@@ -216,9 +224,6 @@
       	closeAllWindows();
       	clearContent();
       }
-
-		</script>
-		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBivhsoVyQqRYK9ThuqELXlLntNHmREoBI&callback=initMap&libraries=places,geometry"
-				async defer></script>
+		</script>	
 	</body>
 </html>
