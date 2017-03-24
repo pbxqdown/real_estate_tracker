@@ -5,21 +5,26 @@
 		<meta name="viewport" content="initial-scale=1.0">
 		<meta charset="utf-8">
 		<style>
-			html, body {
+			html, body{
 				height: 100%;
+				width: 100%;
 				margin: 0;
 				padding: 0;
 			}
 			#map {
-				height: 100%;
-				width: 50%;
+				position: absolute; left: 0px; top: 190px; height: calc(100% - 190px); width: 50%; padding: 0px; border-width: 0px; margin: 0px;
 			}
+			#agency {
+				position: absolute; left: 50%; top: 190px; height: calc(100% - 190px); width: 50%; padding: 0px; border-width: 0px; margin: 0px;
+			}
+
 		</style>
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
 		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
 	</head>
 	<body>
+		<header>
 		<div class="form-group">
 			<label for="addr1">Enter Address 1:</label>
 			<input type="text" class="form-control" id="addr1">
@@ -28,20 +33,27 @@
 			<label for="addr2">Enter Address 2:</label>
 			<input type="text" class="form-control" id="addr2">
 		</div>
-		<button type="button" class="btn btn-primary" onclick="find(show)">Submit</button><br><br>
+		<button type="button" class="btn btn-primary" onclick="find(show)">Submit</button>
+		<button type="button" class="btn btn-danger" onclick="clearAll()">Clear All</button>
+		<br><br>
+		</header>
 		<div id="map" class="col-sm-6"></div>
 		<div id="agency" class="col-sm-6">
-			hello<br>
-			hello2
+			<ul class="list-group" id="agency-list">
+			</ul>
+			<div class="btn-group" id="prenext"></div>
 		</div>
 		<script>
 
 			var map;
 			var austinLocation = {lat: 37.5, lng: -122.1};
-			var loc1;
+			var loc1;//store location of flags
 			var loc2;
+			var flags = [null, null];//store flag
+			var windows = [null, null];//store infowindow
 			var markers = [];//store all the markers
 			var places = [];
+			var page_index = 0;
 			function initMap() {
 				map = new google.maps.Map(document.getElementById('map'), {
 					center: austinLocation,
@@ -58,10 +70,12 @@
 				    map: map,
 				    icon: image
 				  });
+				  addr == "addr1" ? flags[0] = marker : flags[1] = marker;
+				  addr == "addr1" ? windows[0] = infowindow : windows[1] = infowindow;
 				  google.maps.event.addListener(marker, 'click', function() {
 				    infowindow.open(map, marker);
-				  	});
-				  	google.maps.event.addListener(autocomplete, 'place_changed', function() {
+				  });
+			  	google.maps.event.addListener(autocomplete, 'place_changed', function() {
 				    infowindow.close();
 				    var place = autocomplete.getPlace();
 				    addr=="addr1" ? loc1 = place : loc2 = place;
@@ -82,7 +96,6 @@
 				      location: place.geometry.location
 				    }));
 				    marker.setVisible(true);
-
 				    infowindow.setContent('<div><strong>' + place.name + '</strong><br>' +
 				        'Place ID: ' + place.place_id + '<br>' +
 				        place.formatted_address + '</div>');
@@ -92,26 +105,27 @@
 				bind("addr1");
 				bind("addr2");
 			}
+			
 			function find(show) {
 				function getAgency(loc){
+					if(loc === undefined) return;
 					console.log("sss");
 					var service = new google.maps.places.PlacesService(map);
 	 				service.nearbySearch({
 	 					location: loc.geometry.location,
 	 					radius: 16093.4,
 	 					type: ['real_estate_agency']
+	 					//type: ['restaurant']
 	 				}, callback);
 	 				function callback(results, status) {
 		        if (status === google.maps.places.PlacesServiceStatus.OK) {
 		          for (var i = 0; i < results.length; i++) {
 		            createMarker(results[i]);
-		            console.log("places.length");
 		            places.push(results[i]);
 		          }
 		        }
 		        else console.log(status);
 		      }
-		      console.log("sss");
 		      function createMarker(place) {
 		      	infowindow = new google.maps.InfoWindow();
 		        var placeLoc = place.geometry.location;
@@ -126,14 +140,11 @@
 		        });
 		      }     
 				}
-				function deleteAllMarkers(){
-	      	for(var i = 0; i < markers.length; i++) markers[i].setMap(null);
-	      	markers = [];
-	      }
 	      deleteAllMarkers();//before inserting new markers, delete old markers first.
+	      clearContent();
 				places = [];
-				if(loc1 !== undefined) getAgency(loc1);
-				if(loc2 !== undefined) getAgency(loc2);
+				getAgency(loc1);
+				getAgency(loc2);
 				// for(var i=1; i<1000; i++)console.log("hello!");
 				// console.log(places.length);
 				// for(var i=0; i<places.length; i++) console.log(places[i].rating);
@@ -144,13 +155,70 @@
 				setTimeout(show, 1000);
 			}
 			function show(){
-				console.log(places);
+				clearContent();
+				places.sort(function(a, b){
+					function calculateDistance(loc, flag) {
+						if(flag === undefined) return 0;
+						return google.maps.geometry.spherical.computeDistanceBetween(loc.geometry.location, flag.geometry.location);
+					}
+					return calculateDistance(a, loc1) + calculateDistance(a, loc2)
+									- calculateDistance(b, loc1) - calculateDistance(b, loc2);
+				});
+				setTimeout(console.log(places), 2000);
+				if(places.length/10 > 1) $("#prenext").append(`
+					<div id="page_index"></div>
+					<button class="btn btn-success" onclick="prev()">Previous</button>
+					<button class="btn btn-success" onclick="next()">Next</button>
+				`);
+				showPage();
 			}
-
-			
+			function prev(){
+				if(page_index == 0) return;
+				page_index--;
+				showPage();
+			}
+			function next(){
+				if((page_index+1)*10 >= places.length) return;
+				page_index++;
+				showPage();
+			}
+			function showPage(){
+				document.getElementById("agency-list").innerHTML = "";
+				for(var i = 10*page_index; i < Math.min(places.length, 10*(page_index+1)); i++){
+					document.getElementById("agency-list").innerHTML += "<li class='list-group-item'>" + places[i].name+"</li>";
+				}
+				document.getElementById("page_index").innerHTML = "Page "+(page_index+1);
+			}
+			function deleteAllMarkers(){
+      	for(var i = 0; i < markers.length; i++) markers[i].setMap(null);
+      	markers = [];
+      }
+      function deleteAllLocs(){
+      	loc1 = undefined;
+      	loc2 = undefined;
+      	if(flags[0] != undefined) flags[0].setVisible(false); 
+      	if(flags[1] != undefined) flags[1].setVisible(false);
+      	document.getElementById('addr1').value = '';
+      	document.getElementById('addr2').value = '';
+      }
+      function closeAllWindows(){
+      	if(windows[0] != undefined) windows[0].close();
+      	if(windows[1] != undefined) windows[1].close();
+      }
+      function clearContent(){
+      	document.getElementById("agency-list").innerHTML = "";
+				if(document.getElementById("prenext") != undefined) document.getElementById("prenext").innerHTML = "";
+				page_index = 0;
+      }
+      function clearAll(){
+      	deleteAllMarkers();
+      	deleteAllLocs();
+      	closeAllWindows();
+      	clearContent();
+      }
 
 		</script>
-		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBivhsoVyQqRYK9ThuqELXlLntNHmREoBI&callback=initMap&libraries=places"
+		<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBivhsoVyQqRYK9ThuqELXlLntNHmREoBI&callback=initMap&libraries=places,geometry"
 				async defer></script>
 	</body>
 </html>
