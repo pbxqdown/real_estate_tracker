@@ -45,8 +45,8 @@
 		</div>
 		<script>
 			var map;
-			var austinLocation = {lat: 30.27, lng: -97.74};
-			//var austinLocation = {lat: 37.5, lng: -122.1};
+			//var austinLocation = {lat: 30.27, lng: -97.74};
+			var austinLocation = {lat: 37.5, lng: -122.1};
 			var loc1;//store location of flags
 			var loc2;
 			var flags = [null, null];//store flag
@@ -59,7 +59,7 @@
 			function initMap() {
 				map = new google.maps.Map(document.getElementById('map'), {
 					center: austinLocation,
-					zoom: 11
+					zoom: 10
 				});
 				//bind function is used to bind autocomplete to input field
 				function bind(addr) {
